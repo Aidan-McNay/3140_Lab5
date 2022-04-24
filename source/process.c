@@ -149,7 +149,7 @@ static void DeadlineSorting(process_t ** first_process, process_t * added_proces
 
 void process_start (void) {
 	SIM->SCGC6 |= SIM_SCGC6_PIT_MASK;
-	PIT->MCR = 0;
+	PIT->MCR &= 0b101; // Turn on the PIT timer
 	PIT->CHANNEL[0].LDVAL = DEFAULT_SYSTEM_CLOCK / 10;
 	NVIC_EnableIRQ(PIT_IRQn);
 //	NVIC_SetPriority(PIT_IRQn, 2);
@@ -157,6 +157,7 @@ void process_start (void) {
 
 	//Generates interrupts every millisecond and updates the current time
 	PIT->CHANNEL[1].LDVAL = DEFAULT_SYSTEM_CLOCK / 1000;     //0.001 secs
+	PIT->CHANNEL[0].TCTRL = 3;
 	PIT->CHANNEL[1].TCTRL = 3;
 //	NVIC_EnableIRQ(SVCall_IRQn);
 //	NVIC_SetPriority(SVCall_IRQn, 1);
@@ -170,11 +171,11 @@ void process_start (void) {
 
 void PIT1_Service(void) {
 //	__disable_irq();
-	PIT->CHANNEL[1].TFLG = PIT_TFLG_TIF_MASK;  //clear flags
-	//PTE->PCOR = (1<<26);
-	PIT->CHANNEL[1].TCTRL &= ~PIT_TCTRL_TEN_MASK;         //timer disable
-	PIT->CHANNEL[1].LDVAL = DEFAULT_SYSTEM_CLOCK / 1000;  //load 0.001 seconds into timer
-	PIT->CHANNEL[1].TCTRL |= PIT_TCTRL_TEN_MASK;
+//	PIT->CHANNEL[1].TFLG = PIT_TFLG_TIF_MASK;  //clear flags
+//	//PTE->PCOR = (1<<26);
+//	PIT->CHANNEL[1].TCTRL &= ~PIT_TCTRL_TEN_MASK;         //timer disable
+//	PIT->CHANNEL[1].LDVAL = DEFAULT_SYSTEM_CLOCK / 1000;  //load 0.001 seconds into timer
+//	PIT->CHANNEL[1].TCTRL |= PIT_TCTRL_TEN_MASK;
 	current_time.msec = current_time.msec + 1;
 	if (current_time.msec > 999) {
 		current_time.sec = current_time.sec + 1;
