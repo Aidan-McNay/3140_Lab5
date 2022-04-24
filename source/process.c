@@ -19,6 +19,9 @@ realtime_t current_time;
 process_t * unready_rt_queue = NULL;
 process_t * ready_rt_queue = NULL;
 
+//For unready queue, we maintain the invariant that processes with earlier start times are at the front
+//For ready queue, we maintain the invariant that processes with earlier deadlines are at the front
+
 struct process_state {
 	unsigned int* sp; //Pointer to process stack
 	unsigned int* original_sp; //Pointer to start of stack
@@ -65,17 +68,66 @@ process_t* list_pop (process_t** list_start)
 	return process_to_pop;
 }
 
+int compareTime(realtime_t first_time, realtime_t second_time)
+{
+	//Used to compare two times. Returns 1 if second time is after first, returns 0 otherwise
+	if (first_time->sec > second_time->sec){
+		return 0;
+	}
+	else if (second_time->sec > first_time->sec){
+		return 1;
+	}
+	else{
+		if (second_time->sec > first_time->sec){
+			return 1;
+		}
+		else{return 0;}
+	}
+}
+
+int compareTimeEqual(realtime_t first_time, realtime_t second_time)
+{
+	//Used to compare two times. Returns 1 if second time is after or equal to first, returns 0 otherwise
+	if (first_time->sec > second_time->sec){
+		return 0;
+	}
+	else if (second_time->sec > first_time->sec){
+		return 1;
+	}
+	else{
+		if (first_time->sec > second_time->sec){
+			return 0;
+		}
+		else{return 1;}
+	}
+}
+
 static void startTimeSorting(process_t ** first_process, process_t * added_process) {
 	process_t * current_process;
-	if (*first_process == NULL || (*first_process)->start >= added_process->start) {
-		added_process->next.process = *first_process;
+	if (*first_process == NULL) {
+		added_process->next_process = *first_process;
 		*first_process = added_process;
 	} else {
 		current_process = *first_process;
-		while (current_process->next_process != NULL && current_process->next.process->start < added_process->start) {
+		while (current_process->next_process != NULL && compareTime(current_process->start, added_process->start)) {
 			current_process = current_process->next_process;
 		}
-		added_process->next.process = current_process->next_process;
+		added_process->next_process = current_process->next_process;
+		current_process->next_process = added_process;
+	}
+}
+
+static void DeadlineSorting(process_t ** first_process, process_t * added_process) {
+	process_t * current_process;
+	if (*first_process == NULL) {
+		added_process->next_process = *first_process;
+		*first_process = added_process;
+	} else {
+		current_process = *first_process;
+		while (current_process->next_process != NULL && compareTime(current_process->deadline, added_process->deadline)) {
+			current_process = current_process->next_process;
+		}
+		added_process->next_process = current_process->next_process;
 		current_process->next_process = added_process;
 	}
 }
@@ -132,6 +184,7 @@ int process_create (void (*f)(void), int n)
 	process_t* new_process = (process_t*)malloc(sizeof(process_t)); //Allocates space for the new process
 	new_process->sp = sp;
 	new_process->original_sp = sp;
+	new_process->realtime_signal = 0;
 	new_process->size_of_process = n;
 	list_append(&process_queue, new_process); //Append the new process to our process queue
 	//PIT->CHANNEL[0].TCTRL = 3; //Re-enable interrupts
@@ -144,12 +197,12 @@ int process_rt_create(void(*f)(void), int n, realtime_t *start, realtime_t *dead
 	if (!sp) return -1;
 
 	process_t *aux_p = (process_t*) malloc(sizeof(process_t));
-	if (!aux_p) {
-		process_stack_free(sp, n);
+	if (aux_p==NULL) {
 		return -1;
 	}
 
-	aux_p->sp = aux_p->original_sp = sp;
+	aux_p->sp = sp;
+	aux_p->original_sp = sp;
 	aux_p->n = n;
 	aux_p->realtime_signal = 1; //it's a realtime process
 	aux_p->start = start;
@@ -179,6 +232,21 @@ void process_start (void)
 
 unsigned int * process_select(unsigned int * cursp)
 {
+	//Move ready rt processes from unready to ready
+	int finished_moving = 0;
+	while (!finished_moving){
+		//Check if we're at or past the start time
+		if (compareTimeEqual(unready_rt_queue->start, current_time)){
+			//The process is ready
+			process_t* ready_process = list_pop(&unready_rt_queue); //Get process
+			DeadlineSorting(&ready_rt_queue, ready_process); //Put process in ready queue
+		}
+		else{
+			//No more ready processes - all others have later start times
+			finished_moving = 1;
+		}
+	}
+
 	//Selects the new process to begin running
 
 	if (first_process == 1){ //Don't change the first time with current_process=NULL, as it's when we start up
@@ -189,7 +257,17 @@ unsigned int * process_select(unsigned int * cursp)
 		We only pop from the queue when a process has stopped running. This process is at the beginning
 		of the queue, so we don't have to worry about list_pop returning NULL
 		 */
-		process_t* ended_process = list_pop(&process_queue);
+		process_t* ended_process;
+		int process_was_realtime;
+
+		if(current_process->realtime_signal){ //There was a realtime process running
+			ended_process = list_pop(&ready_rt_queue);
+			process_was_realtime = 1;
+		}
+		else{ //Running process wasn't realtime
+			ended_process = list_pop(&process_queue);
+			process_was_realtime = 0;
+		}
 
 		if (cursp==NULL) //The process has terminated - free the used space
 		{
@@ -197,19 +275,32 @@ unsigned int * process_select(unsigned int * cursp)
 			process_stack_free(ended_process->original_sp, ended_process->size_of_process); //Free process stack
 			free(ended_process); //Free process_t struct for process
 			current_process = NULL;
-			if(process_queue==NULL) //No more processes
-			{
-				return NULL;
-			}
 		}
-		else //Process isn't done yet - put at end of queue
+		else //Process isn't done yet - put at end of appropriate queue
 		{
 			ended_process->sp = cursp; //Update stack pointer to where we left off
-			list_append(&process_queue, ended_process); //Put process at the end of the queue
+			if(process_was_realtime){
+				DeadlineSorting(&ready_rt_queue, ended_process); //Put process in ready queue
+			}
+			else{
+				list_append(&process_queue, ended_process); //Put process at the end of the queue
+			}
 		}
 	}
 
-	//Next process is at beginning of queue
-	current_process = process_queue;
-	return process_queue->sp;
+	//Choose next process
+
+	if(ready_rt_queue!=NULL){
+		//There are ready realtime processes
+		current_process = ready_rt_queue;
+	}
+	else if (process_queue!=NULL){
+		//No ready realtime processes - schedule non-realtime one
+		current_process = process_queue;
+	}
+	else{
+		//No processes remaining
+		return NULL;
+	}
+	return current_process->sp;
 }
