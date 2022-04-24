@@ -15,9 +15,13 @@ process_t * process_queue;
 
 int first_process = 1;
 
-realtime_t current_time;
 process_t * unready_rt_queue = NULL;
 process_t * ready_rt_queue = NULL;
+
+int process_deadline_met;
+int process_deadline_miss;
+
+volatile realtime_t current_time;
 
 //For unready queue, we maintain the invariant that processes with earlier start times are at the front
 //For ready queue, we maintain the invariant that processes with earlier deadlines are at the front
@@ -28,8 +32,8 @@ struct process_state {
 	int size_of_process;
 	struct process_state* next_process; //Pointer to next process in queue
 	int realtime_signal;
-	realtime_t * start;
-	realtime_t * deadline;
+	realtime_t start;
+	realtime_t deadline;
 };
 
 //Helper functions for linked list operations
@@ -71,14 +75,14 @@ process_t* list_pop (process_t** list_start)
 int compareTime(realtime_t first_time, realtime_t second_time)
 {
 	//Used to compare two times. Returns 1 if second time is after first, returns 0 otherwise
-	if (first_time->sec > second_time->sec){
+	if (first_time.sec > second_time.sec){
 		return 0;
 	}
-	else if (second_time->sec > first_time->sec){
+	else if (second_time.sec > first_time.sec){
 		return 1;
 	}
 	else{
-		if (second_time->sec > first_time->sec){
+		if (second_time.sec > first_time.sec){
 			return 1;
 		}
 		else{return 0;}
@@ -88,14 +92,14 @@ int compareTime(realtime_t first_time, realtime_t second_time)
 int compareTimeEqual(realtime_t first_time, realtime_t second_time)
 {
 	//Used to compare two times. Returns 1 if second time is after or equal to first, returns 0 otherwise
-	if (first_time->sec > second_time->sec){
+	if (first_time.sec > second_time.sec){
 		return 0;
 	}
-	else if (second_time->sec > first_time->sec){
+	else if (second_time.sec > first_time.sec){
 		return 1;
 	}
 	else{
-		if (first_time->sec > second_time->sec){
+		if (first_time.sec > second_time.sec){
 			return 0;
 		}
 		else{return 1;}
@@ -112,7 +116,12 @@ static void startTimeSorting(process_t ** first_process, process_t * added_proce
 		while (current_process->next_process != NULL && compareTime(current_process->start, added_process->start)) {
 			current_process = current_process->next_process;
 		}
-		added_process->next_process = current_process->next_process;
+		if(current_process->next_process ==NULL){
+			added_process->next_process = NULL;
+		}
+		else{
+			added_process->next_process = current_process->next_process;
+		}
 		current_process->next_process = added_process;
 	}
 }
@@ -127,7 +136,12 @@ static void DeadlineSorting(process_t ** first_process, process_t * added_proces
 		while (current_process->next_process != NULL && compareTime(current_process->deadline, added_process->deadline)) {
 			current_process = current_process->next_process;
 		}
-		added_process->next_process = current_process->next_process;
+		if(current_process->next_process ==NULL){
+			added_process->next_process = NULL;
+		}
+		else{
+			added_process->next_process = current_process->next_process;
+		}
 		current_process->next_process = added_process;
 	}
 }
@@ -137,15 +151,13 @@ void process_start (void) {
 	SIM->SCGC6 |= SIM_SCGC6_PIT_MASK;
 	PIT->MCR = 0;
 	PIT->CHANNEL[0].LDVAL = DEFAULT_SYSTEM_CLOCK / 10;
-	NVIC_EnableIRQ(PIT0_IRQn);
-	NVIC_SetPriority(PIT0_IRQn, 2);
+	NVIC_EnableIRQ(PIT_IRQn);
+	NVIC_SetPriority(PIT_IRQn, 2);
 	// Don't enable the timer yet. The scheduler will do so itself
 
 	//Generates interrupts every millisecond and updates the current time
 	PIT->CHANNEL[1].LDVAL = DEFAULT_SYSTEM_CLOCK / 1000;     //0.001 secs
 	PIT->CHANNEL[1].TCTRL = 3;
-	NVIC_EnableIRQ(PIT1_IRQn);
-	NVIC_SetPriority(PIT1_IRQn, 0);
 	NVIC_EnableIRQ(SVCall_IRQn);
 	NVIC_SetPriority(SVCall_IRQn, 1);
 	current_time.sec = 0;
@@ -203,15 +215,14 @@ int process_rt_create(void(*f)(void), int n, realtime_t *start, realtime_t *dead
 
 	aux_p->sp = sp;
 	aux_p->original_sp = sp;
-	aux_p->n = n;
+	aux_p->size_of_process = n;
 	aux_p->realtime_signal = 1; //it's a realtime process
-	aux_p->start = start;
+	aux_p->start = *start;
 	int total_msec = (1000*start->sec+start->msec)+(1000*deadline->sec+deadline->msec);
 	int total_sec = total_msec / 1000;
 	total_msec = total_msec % 1000;
-	deadline->sec = total_sec;
-	deadline->msec = total_msec;
-	aux_p->deadline = deadline;
+	aux_p->deadline.sec = total_sec;
+	aux_p->deadline.msec = total_msec;
 
 	startTimeSorting(&unready_rt_queue, aux_p);
 	return 0;
@@ -223,7 +234,7 @@ unsigned int * process_select(unsigned int * cursp)
 	int finished_moving = 0;
 	while (!finished_moving){
 		//Check if we're at or past the start time
-		if (compareTimeEqual(unready_rt_queue->start, current_time)){
+		if (unready_rt_queue != NULL && compareTimeEqual(unready_rt_queue->start, current_time)){
 			//The process is ready
 			process_t* ready_process = list_pop(&unready_rt_queue); //Get process
 			DeadlineSorting(&ready_rt_queue, ready_process); //Put process in ready queue

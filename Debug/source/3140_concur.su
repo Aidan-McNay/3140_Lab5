@@ -1,0 +1,2 @@
+../source/3140_concur.c:51:16:process_stack_init	24	static
+../source/3140_concur.c:90:6:process_stack_free	24	static

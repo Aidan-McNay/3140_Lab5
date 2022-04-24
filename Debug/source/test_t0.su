@@ -1,0 +1,5 @@
+../source/test_t0.c:47:6:shortDelay	8	static
+../source/test_t0.c:48:6:mediumDelay	8	static
+../source/test_t0.c:58:6:pNRT	16	static
+../source/test_t0.c:73:6:pRT1	16	static
+../source/test_t0.c:87:5:main	8	static
