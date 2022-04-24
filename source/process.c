@@ -152,14 +152,14 @@ void process_start (void) {
 	PIT->MCR = 0;
 	PIT->CHANNEL[0].LDVAL = DEFAULT_SYSTEM_CLOCK / 10;
 	NVIC_EnableIRQ(PIT_IRQn);
-	NVIC_SetPriority(PIT_IRQn, 2);
+//	NVIC_SetPriority(PIT_IRQn, 2);
 	// Don't enable the timer yet. The scheduler will do so itself
 
 	//Generates interrupts every millisecond and updates the current time
 	PIT->CHANNEL[1].LDVAL = DEFAULT_SYSTEM_CLOCK / 1000;     //0.001 secs
 	PIT->CHANNEL[1].TCTRL = 3;
-	NVIC_EnableIRQ(SVCall_IRQn);
-	NVIC_SetPriority(SVCall_IRQn, 1);
+//	NVIC_EnableIRQ(SVCall_IRQn);
+//	NVIC_SetPriority(SVCall_IRQn, 1);
 	current_time.sec = 0;
 	current_time.msec = 0;
 
@@ -168,8 +168,8 @@ void process_start (void) {
 	process_begin();
 }
 
-void PIT1_IRQHandler(void) {
-	__disable_irq();
+void PIT1_Service(void) {
+//	__disable_irq();
 	PIT->CHANNEL[1].TFLG = PIT_TFLG_TIF_MASK;  //clear flags
 	//PTE->PCOR = (1<<26);
 	PIT->CHANNEL[1].TCTRL &= ~PIT_TCTRL_TEN_MASK;         //timer disable
@@ -180,7 +180,7 @@ void PIT1_IRQHandler(void) {
 		current_time.sec = current_time.sec + 1;
 		current_time.msec = 0;
 	}
-	__enable_irq();
+//	__enable_irq();
 }
 
 //Functions to implement from 3140_concur.h
@@ -308,6 +308,25 @@ unsigned int * process_select(unsigned int * cursp)
 	else if (process_queue!=NULL){
 		//No ready realtime processes - schedule non-realtime one
 		current_process = process_queue;
+	}
+	else if(unready_rt_queue!=NULL){
+		//Processes exist, but aren't ready
+		while(compareTimeEqual(unready_rt_queue->start, current_time))
+		{
+			//Manually change time
+			if(PIT->CHANNEL[1].TFLG > 0x0){
+				current_time.msec = current_time.msec + 1;
+				if (current_time.msec > 999) {
+					current_time.sec = current_time.sec + 1;
+					current_time.msec = 0;
+				}
+				PIT->CHANNEL[1].TFLG = 0x1; // Clear flag by writing 1 to it
+			}
+		}
+		//Move to ready queue and schedule
+		process_t* ready_process = list_pop(&unready_rt_queue); //Get process
+		DeadlineSorting(&ready_rt_queue, ready_process); //Put process in ready queue
+		current_process = ready_rt_queue;
 	}
 	else{
 		//No processes remaining
