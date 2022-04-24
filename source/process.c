@@ -271,10 +271,23 @@ unsigned int * process_select(unsigned int * cursp)
 
 		if (cursp==NULL) //The process has terminated - free the used space
 		{
+			//If realtime, need to check if it met its deadline or not
+			if(process_was_realtime){
+				if(compareTimeEqual(ended_process->deadline, current_time)){
+					//The current_time is after or equal to the deadline, so it was met
+					process_deadline_met++;
+				}
+				else{
+					//Deadline wasn't met
+					process_deadline_miss++;
+				}
+			}
+
 			//This is called from our interrupt handler, which disables interrupts, so we can call process_stack_free
 			process_stack_free(ended_process->original_sp, ended_process->size_of_process); //Free process stack
 			free(ended_process); //Free process_t struct for process
 			current_process = NULL;
+
 		}
 		else //Process isn't done yet - put at end of appropriate queue
 		{
