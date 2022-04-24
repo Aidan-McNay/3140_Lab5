@@ -217,19 +217,6 @@ int process_rt_create(void(*f)(void), int n, realtime_t *start, realtime_t *dead
 	return 0;
 }
 
-void process_start (void)
-{
-	NVIC_EnableIRQ(PIT_IRQn); //Enable interrupts for PIT Timer
-	SIM->SCGC6 = SIM_SCGC6_PIT_MASK; // Enable clock to PIT module
-	PIT->MCR &= 0b101; // Turn on the PIT timer
-
-	//Verify initialization
-	current_process = NULL;
-	PIT->CHANNEL[0].LDVAL = countdown_time;
-
-	process_begin();
-}
-
 unsigned int * process_select(unsigned int * cursp)
 {
 	//Move ready rt processes from unready to ready
