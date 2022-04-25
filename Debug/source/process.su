@@ -6,7 +6,7 @@
 ../source/process.c:109:13:startTimeSorting	24	static
 ../source/process.c:129:13:DeadlineSorting	24	static
 ../source/process.c:150:6:process_start	8	static
-../source/process.c:172:6:PIT1_Service	8	static
-../source/process.c:189:5:process_create	24	static
-../source/process.c:208:5:process_rt_create	40	static
-../source/process.c:232:16:process_select	40	static
+../source/process.c:171:6:PIT1_Service	8	static
+../source/process.c:188:5:process_create	24	static
+../source/process.c:207:5:process_rt_create	40	static
+../source/process.c:231:16:process_select	40	static

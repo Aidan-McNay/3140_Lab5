@@ -113,7 +113,7 @@ static void startTimeSorting(process_t ** first_process, process_t * added_proce
 		*first_process = added_process;
 	} else {
 		current_process = *first_process;
-		while (current_process->next_process != NULL && compareTime(current_process->start, added_process->start)) {
+		while (current_process->next_process != NULL && compareTime(current_process->next_process->start, added_process->start)) {
 			current_process = current_process->next_process;
 		}
 		if(current_process->next_process ==NULL){
@@ -133,7 +133,7 @@ static void DeadlineSorting(process_t ** first_process, process_t * added_proces
 		*first_process = added_process;
 	} else {
 		current_process = *first_process;
-		while (current_process->next_process != NULL && compareTime(current_process->deadline, added_process->deadline)) {
+		while (current_process->next_process != NULL && compareTime(current_process->next_process->deadline, added_process->deadline)) {
 			current_process = current_process->next_process;
 		}
 		if(current_process->next_process ==NULL){
@@ -148,16 +148,15 @@ static void DeadlineSorting(process_t ** first_process, process_t * added_proces
 
 
 void process_start (void) {
+	NVIC_EnableIRQ(PIT_IRQn);
 	SIM->SCGC6 |= SIM_SCGC6_PIT_MASK;
 	PIT->MCR &= 0b101; // Turn on the PIT timer
 	PIT->CHANNEL[0].LDVAL = DEFAULT_SYSTEM_CLOCK / 10;
-	NVIC_EnableIRQ(PIT_IRQn);
 //	NVIC_SetPriority(PIT_IRQn, 2);
 	// Don't enable the timer yet. The scheduler will do so itself
 
 	//Generates interrupts every millisecond and updates the current time
 	PIT->CHANNEL[1].LDVAL = DEFAULT_SYSTEM_CLOCK / 1000;     //0.001 secs
-	PIT->CHANNEL[0].TCTRL = 3;
 	PIT->CHANNEL[1].TCTRL = 3;
 //	NVIC_EnableIRQ(SVCall_IRQn);
 //	NVIC_SetPriority(SVCall_IRQn, 1);
