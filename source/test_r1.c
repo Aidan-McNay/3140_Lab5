@@ -1,9 +1,8 @@
-/* This is a test to make sure that the ready queue is sorted in ascending
- * order. If a new process is added with a lower deadline, the real process
+/* This test makes sure that the ready queue is sorted in ascending
+ * order. If a new process is added with a lower deadline, the process
  * running is interrupted to give priority to the new process added.
  *
- * There should be two blinks of the LED at the end because pRT2 and PRT3
- * both miss their deadlines.
+ * pRT2 and pRT3 miss their deadlines, so there should be two double blinks at the end.
  */
 
 #include "utils.h"
@@ -24,8 +23,6 @@
 /* Constants used for 'work' and 'deadline's */
 realtime_t t_1msec = {0, 1};
 realtime_t t_3msec = {0, 3};
-//realtime_t t_1sec = {1, 0};
-//realtime_t t_10sec = {10, 0};
 
 /* Process start time */
 realtime_t t_pRT1 = {1, 0};
@@ -117,7 +114,7 @@ int main(void) {
     if (process_rt_create(pRT2, RT2_STACK, &t_pRT2, &t_3msec) < 0) { return -1; }
 	if (process_rt_create(pRT3, RT3_STACK, &t_pRT3, &t_1msec) < 0) { return -1; }
 
-	// start processes
+	// Start processes
 	process_start();
 
   LED_Off();
