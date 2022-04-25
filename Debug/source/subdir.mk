@@ -9,20 +9,20 @@ S_SRCS += \
 C_SRCS += \
 ../source/3140_concur.c \
 ../source/process.c \
-../source/test.r1.c \
+../source/test_t0.c \
 ../source/utils.c 
 
 OBJS += \
 ./source/3140.o \
 ./source/3140_concur.o \
 ./source/process.o \
-./source/test.r1.o \
+./source/test_t0.o \
 ./source/utils.o 
 
 C_DEPS += \
 ./source/3140_concur.d \
 ./source/process.d \
-./source/test.r1.d \
+./source/test_t0.d \
 ./source/utils.d 
 
 

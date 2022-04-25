@@ -1,4 +1,5 @@
 C:\Users\claud\Documents\MCUXpressoIDE_11.5.0_7232\workspace\3140_Lab5\CMSIS/core_cm0plus.h:733:22:__NVIC_EnableIRQ	16	static
+C:\Users\claud\Documents\MCUXpressoIDE_11.5.0_7232\workspace\3140_Lab5\CMSIS/core_cm0plus.h:840:22:__NVIC_SetPriority	24	static
 ../source/process.c:41:6:list_append	24	static
 ../source/process.c:62:12:list_pop	24	static
 ../source/process.c:75:5:compareTime	32	static
@@ -7,6 +8,6 @@ C:\Users\claud\Documents\MCUXpressoIDE_11.5.0_7232\workspace\3140_Lab5\CMSIS/cor
 ../source/process.c:129:13:DeadlineSorting	24	static
 ../source/process.c:150:6:process_start	8	static
 ../source/process.c:171:6:PIT1_Service	8	static
-../source/process.c:188:5:process_create	24	static
-../source/process.c:207:5:process_rt_create	40	static
-../source/process.c:231:16:process_select	40	static
+../source/process.c:187:5:process_create	24	static
+../source/process.c:206:5:process_rt_create	40	static
+../source/process.c:230:16:process_select	40	static
