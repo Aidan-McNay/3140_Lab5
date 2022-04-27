@@ -1,4 +1,4 @@
-source/test_t0.o source/test_t0.d: ../source/test_t0.c ../source/utils.h \
+source/test_r1.o source/test_r1.d: ../source/test_r1.c ../source/utils.h \
  ../source/3140_concur.h \
  C:\Users\claud\Documents\MCUXpressoIDE_11.5.0_7232\workspace\3140_Lab5\CMSIS/MKL46Z4.h \
  C:\Users\claud\Documents\MCUXpressoIDE_11.5.0_7232\workspace\3140_Lab5\CMSIS/core_cm0plus.h \

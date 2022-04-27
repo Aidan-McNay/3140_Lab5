@@ -1,6 +1,10 @@
-/* This test makes sure that the ready queue is sorted in ascending
- * order. If a new process is added with a lower deadline, the process
+/* This test makes sure that the ready queue and the unready queue are sorted in
+ * ascending order. If a new process is added with a lower deadline, the process
  * running is interrupted to give priority to the new process added.
+ *
+ * pNRT will run first only blinking twice the red LED. Then, pRT1, pRT3 and pRT2 will
+ * run in this order. Finally, pNRT will run again to finish the two extra blinks of
+ * the red LED.
  *
  * pRT2 and pRT3 miss their deadlines, so there should be two double blinks at the end.
  */
@@ -26,8 +30,8 @@ realtime_t t_3msec = {0, 3};
 
 /* Process start time */
 realtime_t t_pRT1 = {1, 0};
-realtime_t t_pRT2 = {2, 0};
-realtime_t t_pRT3 = {9, 0};
+realtime_t t_pRT2 = {9, 0};
+realtime_t t_pRT3 = {2, 0};
 
 
 /*------------------*
@@ -70,12 +74,28 @@ void pRT1(void) {
 	}
 }
 
+
 /*-----------------------------------------------------
  * Second Real-time process
- * Blinks red LED 2 times
+ * Blinks green LED 6 times
  *----------------------------------------------------*/
 
 void pRT2(void) {
+	int i;
+	for (i=0; i<6;i++){
+		LEDGreen_On();
+		shortDelay();
+		LED_Off();
+		shortDelay();
+	}
+}
+
+/*-----------------------------------------------------
+ * Third Real-time process
+ * Blinks red LED 2 times
+ *----------------------------------------------------*/
+
+void pRT3(void) {
 	int i;
 	for (i=0; i<2;i++){
 		LEDRed_On();
@@ -85,20 +105,6 @@ void pRT2(void) {
 	}
 }
 
-/*-----------------------------------------------------
- * Second Real-time process
- * Blinks green LED 6 times
- *----------------------------------------------------*/
-
-void pRT3(void) {
-	int i;
-	for (i=0; i<6;i++){
-		LEDGreen_On();
-		shortDelay();
-		LED_Off();
-		shortDelay();
-	}
-}
 
 /*--------------------------------------------*/
 /* Main function - start concurrent execution */
